@@ -13,7 +13,7 @@ from pyiqa.utils.options import copy_opt_file, dict2str, parse_options, make_pat
 from pyiqa.train import init_tb_loggers, create_train_val_dataloader
 from pyiqa.train import train_pipeline
 
-
+# renyu: 应该是针对小数据集的n-fold交叉验证训练的方法，代码还是基于train.py
 def train_nsplits(root_path):
     torch.backends.cudnn.benchmark = True
     opt, args = parse_options(root_path, is_train=True)

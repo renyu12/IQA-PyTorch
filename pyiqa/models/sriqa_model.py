@@ -11,7 +11,7 @@ from pyiqa.utils.registry import MODEL_REGISTRY
 from pyiqa.models import lr_scheduler as lr_scheduler
 from .general_iqa_model import GeneralIQAModel
 
-
+# renyu: 参考DBCNN，加了一个微调阶段，就是训练过一半后修改整个网络可以训练，但是调整训练参数学习率很小慢慢走
 @MODEL_REGISTRY.register()
 class SRIQAModel(GeneralIQAModel):
     """General module to train an IQA network."""

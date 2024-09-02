@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 
 from pyiqa.utils.registry import ARCH_REGISTRY
-from pyiqa.archs.arch_util import load_pretrained_network
+#from pyiqa.archs.arch_util import load_pretrained_network    # renyu: 仅使用自定义部分加载预训练模型方法
 
 
 def initialize_weights(net_l, scale=1):
@@ -79,6 +79,64 @@ class RRDB(nn.Module):
         return out * 0.2 + x
 
 @ARCH_REGISTRY.register()
+class SRIQA(nn.Module):
+    def __init__(self):
+    def __init__(
+        self,
+        metric_type='NR',
+        model_name='sriqa_nr',
+        weighted_average=True,
+        pretrained_model_path=None,
+        load_feature_weight_only=True,
+    )
+        super(SRIQA, self).__init__()
+        RRDB_block_f = functools.partial(RRDB, nf=64, gc=32)
+        print([in_nc, nf, nb, gc])
+
+        self.conv_first = nn.Conv2d(3, 64, 3, 1, 1, bias=True)
+        self.RRDB_trunk = make_layer(RRDB_block_f, nb)
+        self.trunk_conv = nn.Conv2d(64, 64, 3, 1, 1, bias=True)
+
+        if pretrained_model_path is not None:
+            self.load_pretrained_network(pretrained_model_path, load_feature_weight_only)
+
+            # renyu: BSRGAN参数全部冻结
+            for param in (self.conv_first.parameters(), self.RRDB_trunk.parameters(), self.trunk_conv.parameters()):
+                param.requires_grad = False
+
+        # renyu: upsampling部分全部移除，改为MLP，输入是224x224x64，想办法设计合适的回归Head处理
+        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # 全局平均池化，直接忽略空间信息224*224变成1  
+        self.fc = nn.Linear(64, 1)     # 全连接层，输出最后回归值
+
+    # renyu: 加载预训练模型，如果load_feature_weight_only=True说明是加载的BSRGAN参数，否则就是加载完整SRIQA模型
+    def load_pretrained_network(self, model_path, load_feature_weight_only):
+        print(f'Loading pretrained model from {model_path}')
+        state_dict = torch.load(model_path, map_location=torch.device('cpu'))['params']
+        if load_feature_weight_only:
+            print('Only load backbone feature net')
+            new_state_dict = {}
+            # renyu: TODO: 这里过滤下BSRGAN中需要的层
+            for k in state_dict.keys():
+                if 'features' in k:
+                    new_state_dict[k] = state_dict[k]
+            self.load_state_dict(new_state_dict, strict=False)
+        else:
+            self.load_state_dict(state_dict, strict=True)
+
+    def forward(self, x):
+        # renyu: x输入设定为224x224x3通道
+        fea = self.conv_first(x)
+        trunk = self.trunk_conv(self.RRDB_trunk(fea))
+        fea = fea + trunk
+        
+        # renyu: 拿到feature 224x224x64通道后，直接过回归Head
+        out = self.fc(self.global_pool(fea))
+
+        return out
+
+# renyu: 原版的BSRGAN，不需要了
+'''
+@ARCH_REGISTRY.register()
 class RRDBNet(nn.Module):
     def __init__(self, in_nc=3, out_nc=3, nf=64, nb=23, gc=32, sf=4):
         super(RRDBNet, self).__init__()
@@ -109,3 +167,4 @@ class RRDBNet(nn.Module):
         out = self.conv_last(self.lrelu(self.HRconv(fea)))
 
         return out
+'''

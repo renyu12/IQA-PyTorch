@@ -10,6 +10,8 @@ from pyiqa.utils import get_root_logger, imwrite, tensor2img
 from pyiqa.utils.registry import MODEL_REGISTRY
 from .base_model import BaseModel
 
+# renyu: 做的很不错的model基类，基本把训练、测试时各种参数初始化、LOSS设置、模型输出都封装好了
+#        如果确实有一些特别的训练流程处理就单独写派生类修改
 
 @MODEL_REGISTRY.register()
 class GeneralIQAModel(BaseModel):

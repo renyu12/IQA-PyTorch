@@ -6,6 +6,7 @@ from pyiqa.data.data_util import read_meta_info_file
 from pyiqa.utils.registry import DATASET_REGISTRY
 from .base_iqa_dataset import BaseIQADataset
 
+# renyu: 通用的NR数据集Data Loader，只是写了下getitem方法，基本方法在baseIQADataset类中定义了
 @DATASET_REGISTRY.register()
 class GeneralNRDataset(BaseIQADataset):
     """General No Reference dataset with meta info file.
