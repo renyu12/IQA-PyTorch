@@ -80,7 +80,6 @@ class RRDB(nn.Module):
 
 @ARCH_REGISTRY.register()
 class SRIQA(nn.Module):
-    def __init__(self):
     def __init__(
         self,
         metric_type='NR',
@@ -88,21 +87,21 @@ class SRIQA(nn.Module):
         weighted_average=True,
         pretrained_model_path=None,
         load_feature_weight_only=True,
-    )
+    ):
         super(SRIQA, self).__init__()
         RRDB_block_f = functools.partial(RRDB, nf=64, gc=32)
-        print([in_nc, nf, nb, gc])
 
         self.conv_first = nn.Conv2d(3, 64, 3, 1, 1, bias=True)
-        self.RRDB_trunk = make_layer(RRDB_block_f, nb)
+        self.RRDB_trunk = make_layer(RRDB_block_f, 23)
         self.trunk_conv = nn.Conv2d(64, 64, 3, 1, 1, bias=True)
 
         if pretrained_model_path is not None:
             self.load_pretrained_network(pretrained_model_path, load_feature_weight_only)
 
             # renyu: BSRGAN参数全部冻结
-            for param in (self.conv_first.parameters(), self.RRDB_trunk.parameters(), self.trunk_conv.parameters()):
-                param.requires_grad = False
+            for layer_params in (self.conv_first.parameters(), self.RRDB_trunk.parameters(), self.trunk_conv.parameters()):
+                for param in layer_params:
+                    param.requires_grad = False
 
         # renyu: upsampling部分全部移除，改为MLP，输入是224x224x64，想办法设计合适的回归Head处理
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # 全局平均池化，直接忽略空间信息224*224变成1  
@@ -111,13 +110,14 @@ class SRIQA(nn.Module):
     # renyu: 加载预训练模型，如果load_feature_weight_only=True说明是加载的BSRGAN参数，否则就是加载完整SRIQA模型
     def load_pretrained_network(self, model_path, load_feature_weight_only):
         print(f'Loading pretrained model from {model_path}')
-        state_dict = torch.load(model_path, map_location=torch.device('cpu'))['params']
+        #state_dict = torch.load(model_path, map_location=torch.device('cpu'))['params']
+        state_dict = torch.load(model_path, map_location=torch.device('cpu'))
         if load_feature_weight_only:
             print('Only load backbone feature net')
             new_state_dict = {}
             # renyu: TODO: 这里过滤下BSRGAN中需要的层
             for k in state_dict.keys():
-                if 'features' in k:
+                if 'RRDB_trunk' in k or 'conv_first' in k or 'trunk_conv' in k:
                     new_state_dict[k] = state_dict[k]
             self.load_state_dict(new_state_dict, strict=False)
         else:
@@ -130,7 +130,9 @@ class SRIQA(nn.Module):
         fea = fea + trunk
         
         # renyu: 拿到feature 224x224x64通道后，直接过回归Head
-        out = self.fc(self.global_pool(fea))
+        out = self.global_pool(fea)                     # 池化后的尺寸为 (batch_size, 64, 1, 1)  
+        out = out.view(out.size(0), -1)                 # 扁平化，尺寸为 (batch_size, 64)  
+        out = self.fc(out)                              # 应用全连接层  
 
         return out
 

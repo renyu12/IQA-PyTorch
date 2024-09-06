@@ -26,8 +26,10 @@ class SRIQAModel(GeneralIQAModel):
         train_opt = self.opt['train']
         optim_params = []
         for k, v in self.net.named_parameters():
-            v.requires_grad = True
-            optim_params.append(v)
+            if 'fc' in k or 'trunk_conv' in k:
+                print(k, v.requires_grad, "set to trainable")
+                v.requires_grad = True
+                optim_params.append(v)
 
         optim_type = train_opt['optim_finetune'].pop('type')
         self.optimizer = self.get_optimizer(optim_type, optim_params, **train_opt['optim_finetune'])
