@@ -105,8 +105,7 @@ class SRIQA(nn.Module):
             # renyu: BSRGAN指定层参数全部冻结
             for freeze_layer in freeze_layers:
                 for layer_params in freeze_layer.parameters():
-                    for param in layer_params:
-                        param.requires_grad = False
+                    layer_params.requires_grad = False
 
         # renyu: upsampling部分全部移除，改为MLP，输入是224x224x64，想办法设计合适的回归Head处理
         # renyu: 方案1 直接全局平均池化然后64维FC输出
@@ -116,6 +115,8 @@ class SRIQA(nn.Module):
         #self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
         #self.fc = nn.Sequential(
         #    nn.Linear(256, 128),
+        #    nn.ReLU(),
+        #    nn.Dropout(0.1),
         #    nn.Linear(128, 1),
         #)
         # renyu: 方案3 最大池化到4*4 然后maniqa MLP Head

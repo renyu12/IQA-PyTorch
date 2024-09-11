@@ -10,9 +10,8 @@ save_final_results_path: './experiments/SRIQA_CSIQ_results.txt'
 # dataset and data loader settings
 datasets:
   train:
-  csiq:
     name: CSIQ
-    type: GeneralFRDataset
+    type: GeneralFR2NRDataset
     dataroot_target: ./datasets/CSIQ/dst_imgs
     dataroot_ref: ./datasets/CSIQ/src_imgs
     meta_info_file: ./datasets/meta_info/meta_info_CSIQDataset.csv
@@ -25,7 +24,7 @@ datasets:
     # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
     augment:
       hflip: true
-      resize: [320, 320]
+      resize: [256, 256]
       random_crop: 224
     img_range: 1
 
@@ -37,15 +36,20 @@ datasets:
     prefetch_mode: ~
 
   val:
-    name: livechallenge
-    type: LIVEChallengeDataset
-    dataroot_target: ./datasets/LIVEC
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
+    name: CSIQ
+    type: GeneralFR2NRDataset
+    dataroot_target: ./datasets/CSIQ/dst_imgs
+    dataroot_ref: ./datasets/CSIQ/src_imgs
+    meta_info_file: ./datasets/meta_info/meta_info_CSIQDataset.csv
+    mos_range: [0, 1]
+    lower_better: true
+    mos_normalize: true
+    split_file: ./datasets/meta_info/csiq_seed123.pkl
     split_index: 2 # which split to use, start from 1
 
+
     augment:
-      resize: [320, 320]
+      resize: [256, 256]
       center_crop: 224
 
 # network structures
