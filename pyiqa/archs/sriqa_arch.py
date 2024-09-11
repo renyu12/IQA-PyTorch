@@ -95,17 +95,38 @@ class SRIQA(nn.Module):
         self.RRDB_trunk = make_layer(RRDB_block_f, 23)
         self.trunk_conv = nn.Conv2d(64, 64, 3, 1, 1, bias=True)
 
+        # renyu: 不冻结最后的卷积层，解冻后发现效果比较好
+        #freeze_layers = (self.conv_first, self.RRDB_trunk, self.trunk_conv)
+        freeze_layers = (self.conv_first, self.RRDB_trunk)
+        
         if pretrained_model_path is not None:
             self.load_pretrained_network(pretrained_model_path, load_feature_weight_only)
 
-            # renyu: BSRGAN参数全部冻结
-            for layer_params in (self.conv_first.parameters(), self.RRDB_trunk.parameters(), self.trunk_conv.parameters()):
-                for param in layer_params:
-                    param.requires_grad = False
+            # renyu: BSRGAN指定层参数全部冻结
+            for freeze_layer in freeze_layers:
+                for layer_params in freeze_layer.parameters():
+                    for param in layer_params:
+                        param.requires_grad = False
 
         # renyu: upsampling部分全部移除，改为MLP，输入是224x224x64，想办法设计合适的回归Head处理
-        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # 全局平均池化，直接忽略空间信息224*224变成1  
-        self.fc = nn.Linear(64, 1)     # 全连接层，输出最后回归值
+        # renyu: 方案1 直接全局平均池化然后64维FC输出
+        #self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # 全局平均池化，直接忽略空间信息224*224变成1  
+        #self.fc = nn.Linear(64, 1)     # 全连接层，输出最后回归值
+        # renyu: 方案2 平均池化到2*2，然后MLP 256->128->1
+        #self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
+        #self.fc = nn.Sequential(
+        #    nn.Linear(256, 128),
+        #    nn.Linear(128, 1),
+        #)
+        # renyu: 方案3 最大池化到4*4 然后maniqa MLP Head
+        self.global_pool = nn.AdaptiveMaxPool2d((4, 4))
+        self.fc = nn.Sequential(
+            nn.Linear(4 * 4 * 64, 128),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(128, 1),
+            nn.ReLU()
+        )
 
     # renyu: 加载预训练模型，如果load_feature_weight_only=True说明是加载的BSRGAN参数，否则就是加载完整SRIQA模型
     def load_pretrained_network(self, model_path, load_feature_weight_only):
@@ -128,6 +149,7 @@ class SRIQA(nn.Module):
         fea = self.conv_first(x)
         trunk = self.trunk_conv(self.RRDB_trunk(fea))
         fea = fea + trunk
+        print(fea.shape)    # renyu: 方便看下进度
         
         # renyu: 拿到feature 224x224x64通道后，直接过回归Head
         out = self.global_pool(fea)                     # 池化后的尺寸为 (batch_size, 64, 1, 1)  

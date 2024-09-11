@@ -68,3 +68,26 @@ class GeneralFRDataset(BaseIQADataset):
         mos_label_tensor = torch.Tensor([mos_label])
         
         return {'img': img_tensor, 'ref_img': ref_tensor, 'mos_label': mos_label_tensor, 'img_path': img_path, 'ref_img_path': ref_path}
+
+
+@DATASET_REGISTRY.register()
+class GeneralFR2NRDataset(GeneralFRDataset):
+    """General Full Reference to NR dataset with meta info file.
+    """
+
+    def __getitem__(self, index):
+
+        ref_path = self.paths_mos[index][0]
+        img_path = self.paths_mos[index][1]
+        mos_label = self.paths_mos[index][2]
+        img_pil = Image.open(img_path).convert('RGB')
+        ref_pil = Image.open(ref_path).convert('RGB')
+        
+        img_pil, ref_pil = self.paired_trans([img_pil, ref_pil])
+
+        img_tensor = self.common_trans(img_pil) * self.img_range
+        ref_tensor = self.common_trans(ref_pil) * self.img_range
+        mos_label_tensor = torch.Tensor([mos_label])
+        
+        #return {'img': img_tensor, 'ref_img': ref_tensor, 'mos_label': mos_label_tensor, 'img_path': img_path, 'ref_img_path': ref_path}
+        return {'img': img_tensor, 'mos_label': mos_label_tensor, 'img_path': img_path}

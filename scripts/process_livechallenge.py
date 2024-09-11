@@ -5,7 +5,7 @@ import numpy
 import pickle
 import csv
 
-
+# renyu: 数据集原始的标签数据转为统一的meta_info_xxx.csv格式
 def get_meta_info():
     root_dir = '../datasets/LIVEC/'
     names = sio.loadmat(os.path.join(root_dir, 'Data', 'AllImages_release.mat'))
@@ -27,7 +27,8 @@ def get_meta_info():
             std = mos_std[idx]
             csvwriter.writerow([img_name, mos, std])
 
-
+# renyu: 对数据集进行训练、验证、测试划分，划分后的结果存到pkl文件，seed默认是123
+#        live challenge数据集这里是做的交叉验证，8:2划分出10组
 def get_random_splits(seed=123):
     random.seed(seed)
     all_img_index = list(range(1162))
