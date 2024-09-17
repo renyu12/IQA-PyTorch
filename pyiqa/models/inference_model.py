@@ -8,6 +8,9 @@ from pyiqa.utils.img_util import imread2tensor
 from pyiqa.losses.loss_util import weight_reduce_loss
 from pyiqa.archs.arch_util import load_pretrained_network
 
+# renyu: 命令行启动就是直接创建推理模型走到这里，非常简单创建一个默认参数的模型，不太支持自定义配置
+#        根据模型的不同会读取default_model_configs.py文件中的一点自定义推理配置
+#        其他配置就是直接按model的默认参数跑
 class InferenceModel(torch.nn.Module):
     """Common interface for quality inference of images with default setting of each metric."""
 

@@ -192,12 +192,13 @@ class MANIQA(nn.Module):
             torch.Tensor: Predicted quality score for the input image.
         """
         x = (x - self.default_mean.to(x)) / self.default_std.to(x)
-        bsz = x.shape[0]
+        bsz = x.shape[0]    # renyu: B C H W
 
         if self.training:
             x = random_crop(x, crop_size=224, crop_num=1)
         else:
             x = uniform_crop(x, crop_size=224, crop_num=self.test_sample)
+        # renyu: B*Crop C H W
 
         _x = self.vit(x)
         x = self.extract_feature(self.save_output)
@@ -209,7 +210,7 @@ class MANIQA(nn.Module):
             x = tab(x)
         x = rearrange(x, 'b c (h w) -> b c h w', h=self.input_size, w=self.input_size)
         x = self.conv1(x)
-        x = self.swintransformer1(x)
+        x = self.swintransformer1(x)    # renyu: B*Crop 768 28 28
 
         # stage2
         x = rearrange(x, 'b c h w -> b c (h w)', h=self.input_size, w=self.input_size)
@@ -219,10 +220,10 @@ class MANIQA(nn.Module):
         x = self.conv2(x)
         x = self.swintransformer2(x)
 
-        x = rearrange(x, 'b c h w -> b (h w) c', h=self.input_size, w=self.input_size)
+        x = rearrange(x, 'b c h w -> b (h w) c', h=self.input_size, w=self.input_size)    # renyu: B*Crop 784 384
 
-        per_patch_score = self.fc_score(x)
-        per_patch_score = per_patch_score.reshape(bsz, -1)
+        per_patch_score = self.fc_score(x)    # renyu: B*Crop 784 1
+        per_patch_score = per_patch_score.reshape(bsz, -1)    # renyu: B Crop*784
         per_patch_weight = self.fc_weight(x)
         per_patch_weight = per_patch_weight.reshape(bsz, -1)
 

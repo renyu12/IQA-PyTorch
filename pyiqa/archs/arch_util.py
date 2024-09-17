@@ -68,6 +68,7 @@ def random_crop(input_list, crop_size, crop_num):
         for j in range(len(input_list)):
             crops_list[j].append(input_list[j][..., sh : sh + ch, sw : sw + cw])
 
+    # renyu: 返回时不改变B C H W的格式，只是B变成B*crop_num
     for i in range(len(crops_list)):
         crops_list[i] = torch.stack(crops_list[i], dim=1).reshape(
             b * crop_num, c, ch, cw
@@ -109,6 +110,7 @@ def uniform_crop(input_list, crop_size, crop_num):
     step_h = (h - ch) // int(np.sqrt(crop_num))
     step_w = (w - cw) // int(np.sqrt(crop_num))
 
+    # renyu: 返回时不改变B C H W的格式，只是B变成B*crop_num
     crops_list = []
     for idx, inp in enumerate(input_list):
         tmp_list = []

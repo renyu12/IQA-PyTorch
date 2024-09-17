@@ -8,6 +8,7 @@ from tqdm import tqdm
 import numpy as np
 from pprint import pprint
 
+# renyu: pyiqa命令行启动就是执行的这个
 
 def main():
     parser = argparse.ArgumentParser(description='Test a metric') 

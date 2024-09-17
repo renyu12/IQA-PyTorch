@@ -11,6 +11,7 @@ import torch.nn.init as init
 
 from pyiqa.utils.registry import ARCH_REGISTRY
 #from pyiqa.archs.arch_util import load_pretrained_network    # renyu: 仅使用自定义部分加载预训练模型方法
+from pyiqa.archs.arch_util import random_crop, uniform_crop   # renyu: 做多次crop测试评分
 
 
 def initialize_weights(net_l, scale=1):
@@ -87,8 +88,11 @@ class SRIQA(nn.Module):
         weighted_average=True,
         pretrained_model_path=None,
         load_feature_weight_only=True,
+        crop_num=15
     ):
         super(SRIQA, self).__init__()
+        self.crop_num = crop_num
+
         RRDB_block_f = functools.partial(RRDB, nf=64, gc=32)
 
         self.conv_first = nn.Conv2d(3, 64, 3, 1, 1, bias=True)
@@ -120,14 +124,31 @@ class SRIQA(nn.Module):
         #    nn.Linear(128, 1),
         #)
         # renyu: 方案3 最大池化到4*4 然后maniqa MLP Head
-        self.global_pool = nn.AdaptiveMaxPool2d((4, 4))
+        #self.global_pool = nn.AdaptiveMaxPool2d((4, 4))
+        #self.fc = nn.Sequential(
+        #    nn.Linear(4 * 4 * 64, 128),
+        #    nn.ReLU(),
+        #    nn.Dropout(0.1),
+        #    nn.Linear(128, 1),
+        #    nn.ReLU()
+        #)
+        # renyu: 方案4 maniqa双路 MLP Head
+        self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
         self.fc = nn.Sequential(
-            nn.Linear(4 * 4 * 64, 128),
+            nn.Linear(256, 128),
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(128, 1),
             nn.ReLU()
         )
+        self.fc_weight = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
+        )
+
 
     # renyu: 加载预训练模型，如果load_feature_weight_only=True说明是加载的BSRGAN参数，否则就是加载完整SRIQA模型
     def load_pretrained_network(self, model_path, load_feature_weight_only):
@@ -146,6 +167,13 @@ class SRIQA(nn.Module):
             self.load_state_dict(state_dict, strict=True)
 
     def forward(self, x):
+        # renyu: 预处理随机crop，训练阶段不多次crop，
+        bsz = x.shape[0]    # renyu: B C H W
+        if self.training:
+            x = random_crop(x, crop_size=224, crop_num=1)
+        else:
+            x = uniform_crop(x, crop_size=224, crop_num=self.crop_num)            # renyu: B*Crop C H W
+
         # renyu: x输入设定为224x224x3通道
         fea = self.conv_first(x)
         trunk = self.trunk_conv(self.RRDB_trunk(fea))
@@ -155,7 +183,23 @@ class SRIQA(nn.Module):
         # renyu: 拿到feature 224x224x64通道后，直接过回归Head
         out = self.global_pool(fea)                     # 池化后的尺寸为 (batch_size, 64, 1, 1)  
         out = out.view(out.size(0), -1)                 # 扁平化，尺寸为 (batch_size, 64)  
-        out = self.fc(out)                              # 应用全连接层  
+
+        # renyu: 双路MLP带权重做加权处理，否则直接出结果
+        if hasattr(self, 'fc_weight'):
+            per_patch_score = self.fc(out)    # renyu: B*Crop 1
+            per_patch_score = per_patch_score.reshape(bsz, -1)    # renyu: B Crop
+            per_patch_weight = self.fc_weight(out)
+            per_patch_weight = per_patch_weight.reshape(bsz, -1)
+
+            score = (per_patch_weight * per_patch_score).sum(dim=-1) / (per_patch_weight.sum(dim=-1) + 1e-8)
+            out = score.unsqueeze(1)
+        # renyu: 开了多crop未做双路MLP加权求和，就是直接取平均（即使当前实际crop_num=1也兼容）
+        elif self.crop_num > 1:
+            per_patch_score = self.fc(out)    # renyu: B*Crop 1
+            per_patch_score = per_patch_score.reshape(bsz, -1)    # renyu: B Crop
+            out = per_patch_score.sum(dim=-1, keepdim=True)  
+        else:
+            out = self.fc(out)                              # 应用全连接层  
 
         return out
 

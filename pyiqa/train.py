@@ -220,6 +220,7 @@ def train_pipeline(root_path, opt=None, args=None):
                 logger.info('Saving latest models and training states.')
                 model.save(epoch, -1) 
 
+            # renyu: 到了配置的验证频率，就执行一次验证
             # validation
             if opt.get('val') is not None and (current_iter % opt['val']['val_freq'] == 0):
                 logger.info(f'{len(val_loaders)} validation datasets are used for validation.')

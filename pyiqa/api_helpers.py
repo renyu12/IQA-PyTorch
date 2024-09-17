@@ -6,7 +6,7 @@ from pyiqa.dataset_info import DATASET_INFO
 from pyiqa.utils import get_root_logger
 from pyiqa.models.inference_model import InferenceModel
 
-
+# renyu: 创建默认的推理模型，输入名称就自动去查默认配置创建模型
 def create_metric(metric_name, as_loss=False, device=None, **kwargs):
     assert metric_name in DEFAULT_CONFIGS.keys(), f'Metric {metric_name} not implemented yet.' 
     metric = InferenceModel(metric_name, as_loss=as_loss, device=device, **kwargs)
