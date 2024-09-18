@@ -17,6 +17,8 @@ import torch.nn.functional as F
 from pyiqa.utils.registry import ARCH_REGISTRY
 from pyiqa.archs.arch_util import load_pretrained_network
 
+import timm    # renyu: 用timm库引入ResNet50模型
+
 
 default_model_urls = {
     'koniq10k': 'https://github.com/chaofengc/IQA-PyTorch/releases/download/v0.1-weights/CNNIQA_koniq10k-e6f14c91.pth'
@@ -81,3 +83,31 @@ class CNNIQA(nn.Module):
 
         q = self.fc3(h)
         return q
+
+@ARCH_REGISTRY.register()
+class ResNetIQA(nn.Module):  
+    def __init__(self, freeze_resnet=True):  
+        super(ResNetIQA, self).__init__()  
+        # 创建预训练的 ResNet-50 模型  
+        self.resnet50 = timm.create_model('resnet50', pretrained=True)  
+        # 冻结 ResNet-50 的参数  
+        if freeze_resnet:  
+            for param in self.resnet50.parameters():  
+                param.requires_grad = False  
+          
+        # 移除 ResNet-50 的分类头（最后的全连接层）  
+        self.resnet50.fc = nn.Identity()  # 或者使用 nn.Sequential() 空操作以保持兼容性  
+  
+        # 添加两层 MLP 回归头  
+        self.mlp = nn.Sequential(  
+            nn.Linear(2048, 512),  # 假设 ResNet-50 的特征维度是 2048  
+            nn.ReLU(),  
+            nn.Linear(512, 1)      # 回归输出一个值  
+        )  
+      
+    def forward(self, x):  
+        # 通过 ResNet-50 提取特征  
+        features = self.resnet50(x)  
+        # 通过 MLP 回归头得到预测值  
+        output = self.mlp(features)  
+        return output  

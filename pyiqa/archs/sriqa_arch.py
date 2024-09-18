@@ -110,19 +110,26 @@ class SRIQA(nn.Module):
             for freeze_layer in freeze_layers:
                 for layer_params in freeze_layer.parameters():
                     layer_params.requires_grad = False
+        
+        # renyu: 增加一层后卷积
+        self.trunk_conv2 = nn.Sequential(
+            nn.ReLU(),    # renyu: 这是给前面trunk_conv层的
+            nn.Conv2d(64, 64, 3, 1, 1, bias=True),
+            nn.ReLU()
+        )
 
         # renyu: upsampling部分全部移除，改为MLP，输入是224x224x64，想办法设计合适的回归Head处理
         # renyu: 方案1 直接全局平均池化然后64维FC输出
         #self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # 全局平均池化，直接忽略空间信息224*224变成1  
         #self.fc = nn.Linear(64, 1)     # 全连接层，输出最后回归值
         # renyu: 方案2 平均池化到2*2，然后MLP 256->128->1
-        #self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
-        #self.fc = nn.Sequential(
-        #    nn.Linear(256, 128),
-        #    nn.ReLU(),
-        #    nn.Dropout(0.1),
-        #    nn.Linear(128, 1),
-        #)
+        self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
+        self.fc = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(128, 1),
+        )
         # renyu: 方案3 最大池化到4*4 然后maniqa MLP Head
         #self.global_pool = nn.AdaptiveMaxPool2d((4, 4))
         #self.fc = nn.Sequential(
@@ -133,21 +140,21 @@ class SRIQA(nn.Module):
         #    nn.ReLU()
         #)
         # renyu: 方案4 maniqa双路 MLP Head
-        self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
-        self.fc = nn.Sequential(
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(128, 1),
-            nn.ReLU()
-        )
-        self.fc_weight = nn.Sequential(
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(128, 1),
-            nn.Sigmoid()
-        )
+        #self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
+        #self.fc = nn.Sequential(
+        #    nn.Linear(256, 128),
+        #    nn.ReLU(),
+        #    nn.Dropout(0.1),
+        #    nn.Linear(128, 1),
+        #    nn.ReLU()
+        #)
+        #self.fc_weight = nn.Sequential(
+        #    nn.Linear(256, 128),
+        #    nn.ReLU(),
+        #    nn.Dropout(0.1),
+        #    nn.Linear(128, 1),
+        #    nn.Sigmoid()
+        #)
 
 
     # renyu: 加载预训练模型，如果load_feature_weight_only=True说明是加载的BSRGAN参数，否则就是加载完整SRIQA模型
@@ -178,6 +185,8 @@ class SRIQA(nn.Module):
         fea = self.conv_first(x)
         trunk = self.trunk_conv(self.RRDB_trunk(fea))
         fea = fea + trunk
+        if hasattr(self, 'trunk_conv2'):
+            fea = self.trunk_conv2(fea)
         print(fea.shape)    # renyu: 方便看下进度
         
         # renyu: 拿到feature 224x224x64通道后，直接过回归Head
