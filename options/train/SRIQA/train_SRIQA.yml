@@ -20,7 +20,7 @@ datasets:
     # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
     augment:
       hflip: true
-      #resize: [320, 320]
+      resize: [320, 320]
       #random_crop: 224
     img_range: 1
 
@@ -39,8 +39,8 @@ datasets:
     split_file: ./datasets/meta_info/livechallenge_seed123.pkl
     split_index: 2 # which split to use, start from 1
 
-    #augment:
-      #resize: [320, 320]
+    augment:
+      resize: [320, 320]
       #center_crop: 224
 
 # network structures

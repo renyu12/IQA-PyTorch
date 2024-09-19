@@ -94,6 +94,8 @@ class ResNetIQA(nn.Module):
         if freeze_resnet:  
             for param in self.resnet50.parameters():  
                 param.requires_grad = False  
+            for param in self.resnet50.layer4.parameters():    # renyu: 解冻layer4效果更好
+                param.requires_grad = True
           
         # 移除 ResNet-50 的分类头（最后的全连接层）  
         self.resnet50.fc = nn.Identity()  # 或者使用 nn.Sequential() 空操作以保持兼容性  

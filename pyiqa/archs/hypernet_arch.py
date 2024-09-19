@@ -54,6 +54,7 @@ class HyperNet(nn.Module):
         default_std=[0.229, 0.224, 0.225],
     ):
         super(HyperNet, self).__init__()
+        # renyu: timm库的模型开了features_only选项，结果就会输出分层特征的列表很方便，不用自己开发取中间层特征了
         self.base_model = timm.create_model(base_model_name, pretrained=True, features_only=True)
 
         lda_out_channels = 16
@@ -66,6 +67,7 @@ class HyperNet(nn.Module):
         self.num_crop = num_crop 
 
         # local distortion aware module
+        # renyu: 这里应该是对ResNet50不同层输出的特征提取，无论输入是多大H*W和通道数是256/512/1024/2048，都搞成16维向量
         self.lda_modules = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(256, 16, kernel_size=1, stride=1, padding=0, bias=False), nn.AvgPool2d(7, stride=7),
@@ -142,6 +144,7 @@ class HyperNet(nn.Module):
         base_feats = self.base_model(x)[1:]
         # multi-scale local distortion aware features
         lda_feat_list = []
+        # renyu: 这里利用zip把分层特征列表和分层特征提取模块（Local Distortion Aware）对应起来，代码就比较整洁
         for bf, ldam in zip(base_feats, self.lda_modules):
             lda_feat_list.append(ldam(bf))
         lda_feat = torch.cat(lda_feat_list, dim=1)

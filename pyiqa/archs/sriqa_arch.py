@@ -98,18 +98,6 @@ class SRIQA(nn.Module):
         self.conv_first = nn.Conv2d(3, 64, 3, 1, 1, bias=True)
         self.RRDB_trunk = make_layer(RRDB_block_f, 23)
         self.trunk_conv = nn.Conv2d(64, 64, 3, 1, 1, bias=True)
-
-        # renyu: 不冻结最后的卷积层，解冻后发现效果比较好
-        #freeze_layers = (self.conv_first, self.RRDB_trunk, self.trunk_conv)
-        freeze_layers = (self.conv_first, self.RRDB_trunk)
-        
-        if pretrained_model_path is not None:
-            self.load_pretrained_network(pretrained_model_path, load_feature_weight_only)
-
-            # renyu: BSRGAN指定层参数全部冻结
-            for freeze_layer in freeze_layers:
-                for layer_params in freeze_layer.parameters():
-                    layer_params.requires_grad = False
         
         # renyu: 增加一层后卷积
         self.trunk_conv2 = nn.Sequential(
@@ -156,12 +144,27 @@ class SRIQA(nn.Module):
         #    nn.Sigmoid()
         #)
 
+        # renyu: 最后处理冻结Backbone，不然可能一些层没定义好load不进来
+        #freeze_layers = (self.conv_first, self.RRDB_trunk, self.trunk_conv)            # renyu: 最后的卷积层解冻后发现效果比较好
+        freeze_layers = (self.conv_first, self.RRDB_trunk)
+        #freeze_layers = (self.conv_first, self.RRDB_trunk[0:22])    # renyu: 共23层RRDB，多解冻一个试试
+
+        if pretrained_model_path is not None:
+            self.load_pretrained_network(pretrained_model_path, load_feature_weight_only)
+
+            # renyu: BSRGAN指定层参数全部冻结
+            for freeze_layer in freeze_layers:
+                for layer_params in freeze_layer.parameters():
+                    layer_params.requires_grad = False
+
 
     # renyu: 加载预训练模型，如果load_feature_weight_only=True说明是加载的BSRGAN参数，否则就是加载完整SRIQA模型
     def load_pretrained_network(self, model_path, load_feature_weight_only):
         print(f'Loading pretrained model from {model_path}')
         #state_dict = torch.load(model_path, map_location=torch.device('cpu'))['params']
         state_dict = torch.load(model_path, map_location=torch.device('cpu'))
+        
+        # renyu: 加载BSRGAN Backbone参数，回归头从头训练
         if load_feature_weight_only:
             print('Only load backbone feature net')
             new_state_dict = {}
@@ -170,7 +173,10 @@ class SRIQA(nn.Module):
                 if 'RRDB_trunk' in k or 'conv_first' in k or 'trunk_conv' in k:
                     new_state_dict[k] = state_dict[k]
             self.load_state_dict(new_state_dict, strict=False)
+        
+        # renyu: 加载训练好的SRIQA模型继续训练
         else:
+            state_dict = state_dict['params']    # renyu: IQA-Pytorch框架保存的模型多一层params字典，硬编码解析下
             self.load_state_dict(state_dict, strict=True)
 
     def forward(self, x):
