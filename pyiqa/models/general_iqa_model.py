@@ -24,6 +24,7 @@ class GeneralIQAModel(BaseModel):
         self.net = build_network(opt['network'])
         self.net = self.model_to_device(self.net)
         self.print_network(self.net)
+        self.save_score = opt['val'].get('save_score', False)
 
         # load pretrained models
         load_path = self.opt['path'].get('pretrain_network', None)
@@ -181,6 +182,7 @@ class GeneralIQAModel(BaseModel):
 
         pred_score = []
         gt_mos = []
+        save_score = []
         for idx, val_data in enumerate(dataloader):
             img_name = osp.basename(val_data['img_path'][0])
             self.feed_data(val_data)
@@ -190,23 +192,35 @@ class GeneralIQAModel(BaseModel):
             if use_pbar:
                 pbar.update(1)
                 pbar.set_description(f'Test {img_name:>20}')
+            if self.save_score:    # renyu: 记录一下预测分数保存
+                save_score.append((idx, img_name, self.gt_mos.item(), self.output_score.item()))
+                #print(save_score[-1])
         if use_pbar:
             pbar.close()
 
         pred_score = torch.cat(pred_score, dim=0).squeeze(1).cpu().numpy()
         gt_mos = torch.cat(gt_mos, dim=0).squeeze(1).cpu().numpy()
 
+        if self.save_score:
+            print(save_score)
+
         if with_metrics:
             # calculate all metrics
             for name, opt_ in self.opt['val']['metrics'].items():
                 self.metric_results[name] = calculate_metric([pred_score, gt_mos], opt_)
+
+            # renyu: 为了test脚本跑通，直接不进行后续更新操作
+            if self.is_train == False:
+                self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
+                return
 
             if self.key_metric is not None:
                 # If the best metric is updated, update and save best model
                 to_update = self._update_best_metric_result(dataset_name, self.key_metric,
                                                             self.metric_results[self.key_metric], current_iter)
 
-                if to_update:
+                # renyu: 当前结果优于best，保存新的best模型覆盖，调整下test模型不保存模型
+                if to_update and self.is_train:
                     for name, opt_ in self.opt['val']['metrics'].items():
                         self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
                     self.copy_model(self.net, self.net_best)
@@ -219,7 +233,8 @@ class GeneralIQAModel(BaseModel):
                                                                   current_iter)
                     updated.append(tmp_updated)
                 # save best model if any metric is updated
-                if sum(updated):
+                # renyu: 调整下test模型不保存模型
+                if sum(updated) and self.is_train:
                     self.copy_model(self.net, self.net_best)
                     self.save_network(self.net_best, 'net_best')
 
@@ -240,6 +255,8 @@ class GeneralIQAModel(BaseModel):
             for metric, value in self.metric_results.items():
                 tb_logger.add_scalar(f'val_metrics/{dataset_name}/{metric}', value, current_iter)
 
+    # renyu: 保存模型的时候同时保存training_state，这样才能resume运行，不然都是加载参数从头训练
+    #        但是如果current_iter==-1的话是不会存的，注意这个对应save_checkpoint_freq配置，只有按这个配置定期存
     def save(self, epoch, current_iter, save_net_label='net'):
         self.save_network(self.net, save_net_label, current_iter)
         self.save_training_state(epoch, current_iter)

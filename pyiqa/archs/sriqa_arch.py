@@ -211,8 +211,11 @@ class SRIQA(nn.Module):
         # renyu: 开了多crop未做双路MLP加权求和，就是直接取平均（即使当前实际crop_num=1也兼容）
         elif self.crop_num > 1:
             per_patch_score = self.fc(out)    # renyu: B*Crop 1
+            real_crop_num = 1    # renyu: 兼容训练阶段和测试阶段crop_num不一致，直接计算一下
+            if out.shape[0] != bsz:
+                real_crop_num = out.shape[0] / bsz
             per_patch_score = per_patch_score.reshape(bsz, -1)    # renyu: B Crop
-            out = per_patch_score.sum(dim=-1, keepdim=True)  
+            out = per_patch_score.sum(dim=-1, keepdim=True) / real_crop_num
         else:
             out = self.fc(out)                              # 应用全连接层  
 

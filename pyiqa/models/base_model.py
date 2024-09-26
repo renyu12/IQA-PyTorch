@@ -67,6 +67,7 @@ class BaseModel():
         self.best_metric_results[dataset_name][metric]['val'] = val
         self.best_metric_results[dataset_name][metric]['iter'] = current_iter
 
+    # renyu: 如果当前的验证结果优于best结果，更新best结果并返回True
     def _update_best_metric_result(self, dataset_name, metric, val, current_iter):
         if self.best_metric_results[dataset_name][metric]['better'] == 'higher':
             if val >= self.best_metric_results[dataset_name][metric]['val']:
@@ -92,6 +93,7 @@ class BaseModel():
         for k in net_g_ema_params.keys():
             net_g_ema_params[k].data.mul_(decay).add_(net_g_params[k].data, alpha=1 - decay)
 
+    # renyu: 这里复制模型是把A复制到B
     def copy_model(self, net_a, net_b):
         """copy model from net_a to net_b"""
         tmp_net_a = self.get_bare_model(net_a)
@@ -137,6 +139,7 @@ class BaseModel():
             for optimizer in self.optimizers:
                 self.schedulers.append(scheduler(optimizer, **train_opt[scheduler_name]))
 
+    # renyu: 这里是如果做了并行化的话，net可能就只是模型的一部分了，需要从net.module中读出原始模型从而做保存/修改
     def get_bare_model(self, net):
         """Get bare model, especially under wrapping with
         DistributedDataParallel or DataParallel.

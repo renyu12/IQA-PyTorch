@@ -7,9 +7,12 @@ from pyiqa.models import build_model
 from pyiqa.utils import get_env_info, get_root_logger, get_time_str, make_exp_dirs
 from pyiqa.utils.options import dict2str, parse_options
 
+# renyu: 测试脚本，整个流程还是比较简单的，基本和训练过程中的验证是一致的
+#        注意这里就是直接读取配置中的所有datasets，直接用的话只留val数据集才行
 
 def test_pipeline(root_path):
     # parse options, set distributed setting, set ramdom seed
+    # renyu: 和train一样的解析命令行参数和yaml配置文件，is_train=False的区别是结果存储到results目录而不是experiments目录
     opt, _ = parse_options(root_path, is_train=False)
 
     torch.backends.cudnn.benchmark = True
