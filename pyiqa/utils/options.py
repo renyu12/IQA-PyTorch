@@ -78,7 +78,8 @@ def _postprocess_yml_value(value):
     # str
     return value
 
-
+# renyu: 注意is_train开关调整训练和测试阶段不同的输出目录，训练阶段放experiments/，测试阶段放results/
+#        root_path是train.py和test.py等脚本的绝对路径直接../..取到的IQA-PyTorch根目录
 def make_paths(opt, root_path):
     if opt['is_train']:
         experiments_root = osp.join(root_path, 'experiments', opt['name'])
@@ -100,7 +101,7 @@ def make_paths(opt, root_path):
         opt['path']['log'] = results_root
         opt['path']['visualization'] = osp.join(results_root, 'visualization')
 
-
+# renyu: 读取配置最关键的是-opt指定的yaml配置文件读取成一个dict，有几个个别的命令行参数配置如--debug --auto_resume都一起合并到dict
 def parse_options(root_path, is_train=True):
     parser = argparse.ArgumentParser()
     parser.add_argument('-opt', type=str, required=True, help='Path to option YAML file.')
@@ -176,11 +177,13 @@ def parse_options(root_path, is_train=True):
         if (val is not None) and ('resume_state' in key or 'pretrain_network' in key):
             opt['path'][key] = osp.expanduser(val)
 
+    # renyu: 项目根目录下创建输出文件夹experiments或者results
     make_paths(opt, root_path)
 
     return opt, args
 
 
+# renyu: 每次跑训练都把当前配置放入输出的experiments目录里存档，好功能
 @master_only
 def copy_opt_file(opt_file, experiments_root):
     # copy the yml file to the experiment root

@@ -1,6 +1,6 @@
 # Modified from: https://github.com/facebookresearch/fvcore/blob/master/fvcore/common/registry.py  # noqa: E501
 
-
+# renyu: 其实就是全局变量的字典，封装成了装饰器会比较方便使用，需要添加一些新模块的时候直接在定义前加装饰器注册就可以了
 class Registry():
     """
     The registry that provides name -> object mapping, to support third-party

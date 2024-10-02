@@ -24,7 +24,7 @@ def set_random_seed(seed=123):
 def get_time_str():
     return time.strftime('%Y%m%d_%H%M%S', time.localtime())
 
-
+# renyu: 这里实现了每次新跑训练/测试任务，会把上一次历史任务目录加时间戳重命名后存档
 def mkdir_and_rename(path):
     """mkdirs. If path exists, rename it with timestamp, create a new one, and move it to archive folder.
 
@@ -39,6 +39,7 @@ def mkdir_and_rename(path):
     os.makedirs(path, exist_ok=True)
 
 
+# renyu: 训练/测试脚本一开始要创建需要的目录，除了experiments/results这样的输出目录，还可以自定义一些目录写到path:配置里
 @master_only
 def make_exp_dirs(opt):
     """Make dirs for experiments."""

@@ -84,7 +84,7 @@ def create_train_val_dataloader(opt, logger):
 
     return train_loader, train_sampler, val_loaders, total_epochs, total_iters
 
-
+# renyu: 读取历史训练状态，要么开了--auto_resume，要么配置path里写了resume_state的路径
 def load_resume_state(opt):
     resume_state_path = None
     if opt['auto_resume']:
@@ -99,6 +99,7 @@ def load_resume_state(opt):
         if opt['path'].get('resume_state'):
             resume_state_path = opt['path']['resume_state']
 
+    # renyu: 成功读到历史训练状态路径才resume
     if resume_state_path is None:
         resume_state = None
     else:
