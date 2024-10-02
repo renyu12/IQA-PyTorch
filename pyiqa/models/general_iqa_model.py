@@ -202,7 +202,10 @@ class GeneralIQAModel(BaseModel):
         gt_mos = torch.cat(gt_mos, dim=0).squeeze(1).cpu().numpy()
 
         if self.save_score:
-            print(save_score)
+            with open('output_score.csv', 'w') as file:  
+                for item in save_score:  
+                    line = f'{item[1]},{item[2]},{item[3]}\n'  
+                    file.write(line)  
 
         if with_metrics:
             # calculate all metrics
