@@ -1,3 +1,4 @@
+# renyu: SRIQA加载BSRGAN预训练模型在KonIQ数据集上训练的配置，跑train.py
 # general settings
 # name: debug_SRIQA_KONIQ
 name: 001_SRIQA_KONIQ

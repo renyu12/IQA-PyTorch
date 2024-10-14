@@ -1,29 +1,23 @@
-# renyu: SRIQA加载BSRGAN预训练模型在LIVEC数据集上训练的配置，跑train.py
+# renyu: 使用KonIQ数据集上预提取特征换回归头训练的配置，跑train.py，network里设置回归头
 # general settings
-# name: debug_SRIQA_LIVEC
-name: 001_SRIQA_LIVEC
-model_type: SRIQAModel
+name: 001_Head_SRIQA_KONIQ
+model_type: GeneralIQAModel
 num_gpu: 1  # set num_gpu: 0 for cpu mode
 manual_seed: 123
 split_num: 10
-save_final_results_path: './experiments/SRIQA_LIVEChallenge_10splits_results.txt'
+save_final_results_path: './experiments/SRIQA_KonIQ_10splits_results.txt'
 
 # dataset and data loader settings
 datasets:
   train:
-    name: livechallenge
-    type: LIVEChallengeDataset
-    dataroot_target: ./datasets/LIVEC/
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
-    split_index: 2 # which split to use, start from 1
-
-    # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
-    augment:
-      hflip: true
-      resize: [320, 320]
-      #random_crop: 224
-    img_range: 1
+    name: koniq10k
+    type: GeneralNRFeatureDataset
+    featureroot_target: /data1/renyuyang/IQA/datasets/KonIQ_FEATURE
+    meta_info_file: ./datasets/meta_info/meta_info_KonIQ10kDataset.csv
+    split_file: ./datasets/meta_info/koniq10k_official.pkl
+    mos_range: [0, 100]
+    lower_better: false 
+    mos_normalize: true
 
     # data loader
     use_shuffle: true
@@ -33,23 +27,19 @@ datasets:
     prefetch_mode: ~
 
   val:
-    name: livechallenge
-    type: LIVEChallengeDataset
-    dataroot_target: ./datasets/LIVEC
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
-    split_index: 2 # which split to use, start from 1
+    name: koniq10k
+    type: GeneralNRFeatureDataset
+    featureroot_target: /data1/renyuyang/IQA/datasets/KonIQ_FEATURE
+    meta_info_file: ./datasets/meta_info/meta_info_KonIQ10kDataset.csv
+    split_file: ./datasets/meta_info/koniq10k_official.pkl
 
-    augment:
-      resize: [320, 320]
-      #center_crop: 224
 
 # network structures
 network:
-  type: SRIQA
-  pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
-  load_feature_weight_only: True
-  crop_num: 10
+  type: AVGMLPHead
+  #pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
+  #load_feature_weight_only: True
+  repeat_crop: false
 
 # path
 path:
@@ -60,10 +50,6 @@ path:
 # training settings
 train:
   optim:
-    #type: SGD
-    #lr: !!float 1e-3
-    #momentum: 0.9
-    #weight_decay: !!float 5e-4
     # renyu: just adam, don't two stage is OK
     type: Adam
     lr: !!float 1e-3
@@ -84,8 +70,8 @@ train:
     milestones: [1000]
     gamma: 1
 
-  total_iter: 12000
-  finetune_start_iter: 6000
+  total_iter: 40000
+  finetune_start_iter: 60000
   warmup_iter: -1  # no warm up
 
   # losses

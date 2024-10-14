@@ -113,3 +113,62 @@ class ResNetIQA(nn.Module):
         # 通过 MLP 回归头得到预测值  
         output = self.mlp(features)  
         return output  
+
+# renyu: 尝试取ResNet分层特征的代码（TODO: 待调试）
+@ARCH_REGISTRY.register()
+class ResNetIQABackbone(nn.Module):
+    def __init__(
+        self,
+        network='resnet50',
+        test_sample=10,
+        pretrained_model_path=None,
+    ):
+        super().__init__()
+
+        self.test_sample = test_sample
+
+        if network == 'resnet50':
+            self.model = models.resnet50(weights='IMAGENET1K_V1')
+        elif network == 'resnet34':
+            self.model = models.resnet34(weights='IMAGENET1K_V1')
+        elif network == 'resnet18':
+            self.model = models.resnet18(weights='IMAGENET1K_V1')
+
+
+
+    def forward_backbone(self, model, x):
+        # See note [TorchScript super()]
+        x = model.conv1(x)
+        x = model.bn1(x)
+        x = model.relu(x)
+        x = model.maxpool(x)
+
+        x = model.layer1(x)
+        l1 = x
+        x = model.layer2(x)
+        l2 = x
+        x = model.layer3(x)
+        l3 = x
+        x = model.layer4(x)
+        l4 = x
+        x = model.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = model.fc(x)
+
+        return x, l1, l2, l3, l4
+
+    def forward(self, x):
+        #x = (x - self.default_mean.to(x)) / self.default_std.to(x)
+        bsz = x.shape[0]
+
+        '''
+        if self.training:
+            x = random_crop(x, 224, 1)
+            num_patches = 1
+        else:
+            x = uniform_crop(x, 224, self.test_sample)
+            num_patches = self.test_sample
+        '''
+
+        out, layer1, layer2, layer3, layer4 = self.forward_backbone(self.model, x)
+        return layer4

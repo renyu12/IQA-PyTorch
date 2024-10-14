@@ -1,3 +1,4 @@
+# renyu: 使用LIVEC数据集上预提取特征换回归头训练的配置，跑train.py，network里设置回归头
 # general settings
 name: 001_Head_SRIQA_LIVEC
 model_type: GeneralIQAModel

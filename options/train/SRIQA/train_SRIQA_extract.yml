@@ -1,3 +1,4 @@
+# renyu: BSRGAN预训练模型预提取特征存储为本地文件配置，跑pre_extract_feature.py
 # general settings
 name: 001_EXTRACT_SRIQA_LIVEC
 model_type: GeneralIQAFeatureModel

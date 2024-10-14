@@ -1,3 +1,4 @@
+# renyu: SRIQA在LIVEC数据集上跑好的模型直接跑test.py脚本验证配置
 # general settings
 # name: debug_SRIQA_LIVEC
 name: 001_SRIQA_LIVEC
