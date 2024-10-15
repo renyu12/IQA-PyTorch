@@ -45,30 +45,29 @@ class LRHead(nn.Module):
 
 @ARCH_REGISTRY.register()
 class AVGMLPHead(nn.Module): 
-    def __init__(self, repeat_crop=False, crop_num=1, pretrained_model_path=None):  
+    def __init__(self, repeat_crop=False, crop_num=1, conv_layer_num=2, pool_size=2,
+                    pool2_size=128, pretrained_model_path=None):  
         super(AVGMLPHead, self).__init__()  
         self.repeat_crop = repeat_crop
         self.crop_num = crop_num
+        self.conv_layer_num = conv_layer_num
+        self.pool_size = pool_size
+        self.pool2_size = pool2_size
 
-        # renyu: 后卷积
-        self.head_conv = nn.Sequential(
-            nn.ReLU(),    # renyu: 这是给前面trunk_conv层的
-            nn.Conv2d(64, 64, 3, 1, 1, bias=True),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, 3, 1, 1, bias=True),
-            nn.ReLU()
-        )
+        # renyu: 后卷积，动态设置卷积层数，默认为2
+        self.head_conv = nn.ModuleList()
+        for _ in range(conv_layer_num):
+            self.head_conv.append(nn.Conv2d(64, 64, 3, 1, 1, bias=True))
+            self.head_conv.append(nn.ReLU())
 
         # renyu: 方案2 平均池化到2*2，然后MLP 256->128->1
         #self.global_pool = nn.AdaptiveAvgPool2d((2, 2))  # 全局平均池化到2*2
-        self.global_pool = nn.AdaptiveAvgPool2d((7, 7))  # 全局平均池化到7*7
+        self.global_pool = nn.AdaptiveAvgPool2d((self.pool_size, self.pool_size))  # 全局平均池化到7*7
         self.fc = nn.Sequential(
-            #nn.Linear(256, 128),
-            nn.Linear(3136, 256),
+            nn.Linear(self.pool_size * self.pool_size * 64, self.pool2_size),
             nn.ReLU(),
             nn.Dropout(0.1),
-            #nn.Linear(128, 1),
-            nn.Linear(256, 1)
+            nn.Linear(self.pool2_size, 1)
         )
 
         # renyu: 要冻结的层这里设置
@@ -103,7 +102,9 @@ class AVGMLPHead(nn.Module):
                 x = uniform_crop(x, crop_size=224, crop_num=self.crop_num)            # renyu: B*Crop C H W
 
         # renyu: x输入设定为224x224x3通道
-        fea = self.head_conv(x)
+        fea = F.relu(x)    # renyu: 这是给前面trunk_conv层的
+        for conv_layer in self.head_conv:
+            fea = conv_layer(fea)
         print(fea.shape)    # renyu: 方便看下进度
         
         # renyu: 拿到feature 224x224x64通道后，直接过回归Head

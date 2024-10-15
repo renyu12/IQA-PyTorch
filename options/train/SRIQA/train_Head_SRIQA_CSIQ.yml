@@ -1,27 +1,31 @@
-# renyu: 使用LIVEC数据集上预提取特征换回归头训练的配置，跑train.py，network里设置回归头
+# renyu: 使用CSIQ数据集上预提取特征换回归头训练的配置，跑train.py，network里设置回归头
 #        回归头训练配置相比原配置几处改动：
 #            1. 名称
 #            2. model_type使用GeneralIQAModel
 #            3. 数据增强：不做任何数据增强
-#            4. DataLoader：数据集类型改为GeneralNRFeatureDataset，dataroot_target改为featureroot_target
-#            5. 模型：SRIQA改为回归头如AVGMLPHead，关闭随机重复crop
+#            4. DataLoader：数据集类型改为GeneralFR2NRFeatureDataset，dataroot_target改为featureroot_target
+#            5. 模型：SRIQA改为回归头如AVGMLPHead，关闭预加载，关闭随机重复crop
 
 # general settings
-name: 001_Head_SRIQA_LIVEC
+# name: debug_SRIQA_CSIQ
+name: 001_Head_SRIQA_CSIQ
 model_type: GeneralIQAModel
 num_gpu: 1  # set num_gpu: 0 for cpu mode
 manual_seed: 123
 split_num: 10
-save_final_results_path: './experiments/SRIQA_LIVEChallenge_10splits_results.txt'
+save_final_results_path: './experiments/SRIQA_CSIQ_results.txt'
 
 # dataset and data loader settings
 datasets:
   train:
-    name: livechallenge
-    type: GeneralNRFeatureDataset
-    featureroot_target: ./datasets/LIVEC_FEATURE
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
+    name: CSIQ
+    type: GeneralFR2NRFeatureDataset
+    featureroot_target: /data1/renyuyang/IQA/datasets/CSIQ_FEATURE
+    meta_info_file: ./datasets/meta_info/meta_info_CSIQDataset.csv
+    mos_range: [0, 1]
+    lower_better: true
+    mos_normalize: true
+    split_file: ./datasets/meta_info/csiq_seed123.pkl
     split_index: 2 # which split to use, start from 1
 
     # data loader
@@ -32,20 +36,26 @@ datasets:
     prefetch_mode: ~
 
   val:
-    name: livechallenge
-    type: GeneralNRFeatureDataset
-    featureroot_target: ./datasets/LIVEC_FEATURE
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
+    name: CSIQ
+    type: GeneralFR2NRFeatureDataset
+    featureroot_target: /data1/renyuyang/IQA/datasets/CSIQ_FEATURE
+    meta_info_file: ./datasets/meta_info/meta_info_CSIQDataset.csv
+    mos_range: [0, 1]
+    lower_better: true
+    mos_normalize: true
+    split_file: ./datasets/meta_info/csiq_seed123.pkl
     split_index: 2 # which split to use, start from 1
+
 
 # network structures
 network:
-  type: LRHead
+  type: AVGMLPHead
   #pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
   #load_feature_weight_only: True
-  #crop_num: 10
   repeat_crop: false
+  conv_layer_num: 2
+  pool_size: 2
+  pool2_size: 128
 
 # path
 path:
@@ -56,7 +66,6 @@ path:
 # training settings
 train:
   optim:
-    # renyu: just adam, don't two stage is OK
     type: Adam
     lr: !!float 1e-3
     weight_decay: !!float 5e-4
@@ -77,7 +86,7 @@ train:
     gamma: 1
 
   total_iter: 12000
-  finetune_start_iter: 6000
+  finetune_start_iter: 60000
   warmup_iter: -1  # no warm up
 
   # losses

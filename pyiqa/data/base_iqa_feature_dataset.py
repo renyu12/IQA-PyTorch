@@ -7,7 +7,7 @@ from pyiqa.data.data_util import read_meta_info_file
 from pyiqa.data.transforms import transform_mapping, PairedToTensor
 from pyiqa.utils import get_root_logger
 
-# renyu: 预提取特征数据Dataset的基类，相当于是原始图像数据集的简化，不需要做Transform等预处理了，但其他要保持一致
+# renyu: 预提取特征数据Dataset的基类，相当于是原始图像数据集的简化，不需要做Transform等预处理了，但其他MOS归一化和split分数据集要保持一致
 #        定义好了数据集npy文件解析、数据集划分、归一化、Transform预处理
 #        没有实现getitem方法，具体类别里自己写
 class BaseIQAFeatureDataset(data.Dataset):

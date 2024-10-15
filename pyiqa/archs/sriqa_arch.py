@@ -88,9 +88,13 @@ class SRIQA(nn.Module):
         weighted_average=True,
         pretrained_model_path=None,
         load_feature_weight_only=True,
-        crop_num=15
+        repeat_crop=False,
+        crop_size=224,
+        crop_num=10
     ):
         super(SRIQA, self).__init__()
+        self.repeat_crop = repeat_crop
+        self.crop_size = crop_size
         self.crop_num = crop_num
 
         RRDB_block_f = functools.partial(RRDB, nf=64, gc=32)
@@ -180,12 +184,13 @@ class SRIQA(nn.Module):
             self.load_state_dict(state_dict, strict=True)
 
     def forward(self, x):
-        # renyu: 预处理随机crop，训练阶段不多次crop，
+        # renyu: 开启预处理随机crop，根据设置的size和num去crop，但训练阶段不多次crop，仅仅验证阶段多次crop保持稳定
         bsz = x.shape[0]    # renyu: B C H W
-        if self.training:
-            x = random_crop(x, crop_size=224, crop_num=1)
-        else:
-            x = uniform_crop(x, crop_size=224, crop_num=self.crop_num)            # renyu: B*Crop C H W
+        if self.repeat_crop:
+            if self.training:
+                x = random_crop(x, crop_size=self.crop_size, crop_num=1)
+            else:
+                x = uniform_crop(x, crop_size=self.crop_size, crop_num=self.crop_num)            # renyu: B*Crop C H W
 
         # renyu: x输入设定为224x224x3通道
         fea = self.conv_first(x)

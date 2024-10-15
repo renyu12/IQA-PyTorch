@@ -52,6 +52,11 @@ def read_meta_info_file(img_dir, meta_info_file, mode='nr', ref_dir=None):
             img_name, mos = item[:2]
             img_path = osp.join(img_dir, img_name)
             paths_mos.append([img_path, float(mos)])
+        # renyu: 简单的FR数据集当做NR数据集的处理，直接读取时就只读取NR相关返回，注意外部MOS值可能要取反
+        elif mode == 'fr2nr':
+            ref_name, img_name, mos = item[:3]
+            img_path = osp.join(img_dir, img_name)
+            paths_mos.append([img_path, float(mos)])
 
     return paths_mos
 
