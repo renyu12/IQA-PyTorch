@@ -1,0 +1,136 @@
+# renyu: Kadid10k数据集BSRGAN预训练模型预提取特征存储为本地文件配置，跑pre_extract_feature.py
+#        预提取特征配置相比原配置几处改动：
+#            1. 名称
+#            2. model_type使用GeneralIQAFeatureModel
+#            3. 数据增强：不做hflip和crop（resize看情况）
+#            4. DataLoader：不需要shuffle、prefetch、enlarge啥的，batch size固定为1
+#            5. SRIQA模型：关闭随机重复crop
+#            6. 验证配置：添加预提取特征存储路径save_feature_path
+
+# general settings
+name: 001_EXTRACT_SRIQA_KADID
+model_type: GeneralIQAFeatureModel
+num_gpu: 1  # set num_gpu: 0 for cpu mode
+manual_seed: 123
+split_num: 10
+save_final_results_path: './experiments/SRIQA_Kadid_10splits_results.txt'
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: KADID10k
+    type: GeneralFR2NRDataset
+    dataroot_target: './datasets/kadid10k/images'
+    meta_info_file: './datasets/meta_info/meta_info_KADID10kDataset.csv'
+    mos_range: [1, 5]
+    lower_better: false
+    split_file: ./datasets/meta_info/kadid10k_seed123.pkl
+    split_index: 2 # which split to use, start from 1
+
+    # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
+    augment:
+      #hflip: true
+      #resize: [320, 320]
+      #random_crop: 384
+      #center_crop: 384
+    img_range: 1
+
+    # data loader
+    #use_shuffle: true
+    num_worker_per_gpu: 4
+    batch_size_per_gpu: 1
+    #dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+
+  val:
+    name: KADID10k
+    type: GeneralFR2NRDataset
+    dataroot_target: './datasets/kadid10k/images'
+    meta_info_file: './datasets/meta_info/meta_info_KADID10kDataset.csv'
+    mos_range: [1, 5]
+    lower_better: false
+    split_file: ./datasets/meta_info/kadid10k_seed123.pkl
+    split_index: 2 # which split to use, start from 1
+
+    augment:
+      #resize: [320, 320]
+      #center_crop: 384
+
+# network structures
+network:
+  type: SRIQA
+  pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
+  load_feature_weight_only: True
+  repeat_crop: False
+
+# path
+path:
+  pretrain_network_g: ~
+  strict_load_g: true
+  resume_state: ~
+
+# training settings
+train:
+  optim:
+    # renyu: just adam, don't two stage is OK
+    type: Adam
+    lr: !!float 1e-3
+    weight_decay: !!float 5e-4
+
+  optim_finetune:
+    type: Adam
+    lr: !!float 1e-5
+    weight_decay: !!float 5e-4
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [1000]
+    gamma: 1
+
+  scheduler_finetune:
+    type: MultiStepLR
+    milestones: [1000]
+    gamma: 1
+
+  total_iter: 12000
+  finetune_start_iter: 6000
+  warmup_iter: -1  # no warm up
+
+  # losses
+  mos_loss_opt:
+    type: MSELoss
+    loss_weight: !!float 1.0
+    reduction: mean
+
+# validation settings
+val:
+  val_freq: !!float 100
+  save_img: false
+  pbar: true
+  save_feature_path: /data1/renyuyang/IQA/datasets/KADID_FEATURE
+
+  key_metric: srcc # if this metric improve, update all metrics. If not specified, each best metric results will be updated separately
+  metrics:
+    srcc:
+      type: calculate_srcc
+
+    plcc:
+      type: calculate_plcc
+
+    krcc:
+      type: calculate_krcc
+
+# logging settings
+logger:
+  print_freq: 10
+  save_checkpoint_freq: !!float 2e3  # renyu: still need to save states for resume
+  save_latest_freq: !!float 5e2
+  use_tb_logger: true
+  wandb:
+    project: ~
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29500

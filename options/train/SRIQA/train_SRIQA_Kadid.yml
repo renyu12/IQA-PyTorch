@@ -1,38 +1,60 @@
-# renyu: SRIQA在LIVEC数据集上跑好的模型直接跑test.py脚本验证配置
-#        跑验证得到预测标签配置相比原配置几处改动：
-#            1. 移除训练集
-#            2. 预训练模型为最佳训练好的模型，修改pretrained_model_path，load_feature_weight_only为False
-#            3. save_score: true
+# renyu: SRIQA加载BSRGAN预训练模型在Kadid10K数据集上训练的配置，跑train.py
 
 # general settings
-# name: debug_SRIQA_LIVEC
-name: 001_SRIQA_LIVEC
+name: 001_SRIQA_KADID
 model_type: SRIQAModel
 num_gpu: 1  # set num_gpu: 0 for cpu mode
 manual_seed: 123
 split_num: 10
-save_final_results_path: './experiments/SRIQA_LIVEChallenge_10splits_results.txt'
+save_final_results_path: './experiments/SRIQA_Kadid_10splits_results.txt'
 
 # dataset and data loader settings
 datasets:
+  train:
+    name: KADID10k
+    type: GeneralFR2NRDataset
+    dataroot_target: './datasets/kadid10k/images'
+    meta_info_file: './datasets/meta_info/meta_info_KADID10kDataset.csv'
+    mos_range: [1, 5]
+    lower_better: false
+    split_file: ./datasets/meta_info/kadid10k_seed123.pkl
+    split_index: 2 # which split to use, start from 1
+
+    # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
+    augment:
+      hflip: true
+      #resize: [320, 320]
+      random_crop: 384
+    img_range: 1
+
+    # data loader
+    use_shuffle: true
+    num_worker_per_gpu: 4
+    batch_size_per_gpu: 8
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+
   val:
-    name: livechallenge
-    type: LIVEChallengeDataset
-    dataroot_target: ./datasets/LIVEC
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
+    name: KADID10k
+    type: GeneralFR2NRDataset
+    dataroot_target: './datasets/kadid10k/images'
+    meta_info_file: './datasets/meta_info/meta_info_KADID10kDataset.csv'
+    mos_range: [1, 5]
+    lower_better: false
+    split_file: ./datasets/meta_info/kadid10k_seed123.pkl
     split_index: 2 # which split to use, start from 1
 
     augment:
-      resize: [320, 320]
-      #center_crop: 224
+      #resize: [320, 320]
+      center_crop: 384
 
 # network structures
 network:
   type: SRIQA
-  #pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
-  pretrained_model_path: /root/autodl-fs/videomamba_pretrain_models/SRIQA_BACK/models/net_best_2conv_mlp.pth
-  load_feature_weight_only: False
+  pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
+  load_feature_weight_only: True
+  repeat_crop: False
+  crop_size: 224
   crop_num: 5
 
 # path
@@ -44,10 +66,6 @@ path:
 # training settings
 train:
   optim:
-    #type: SGD
-    #lr: !!float 1e-3
-    #momentum: 0.9
-    #weight_decay: !!float 5e-4
     # renyu: just adam, don't two stage is OK
     type: Adam
     lr: !!float 1e-3
@@ -68,8 +86,8 @@ train:
     milestones: [1000]
     gamma: 1
 
-  total_iter: 16000
-  finetune_start_iter: 60000
+  total_iter: 12000
+  finetune_start_iter: 6000
   warmup_iter: -1  # no warm up
 
   # losses
@@ -80,10 +98,9 @@ train:
 
 # validation settings
 val:
-  val_freq: !!float 200
+  val_freq: !!float 100
   save_img: false
   pbar: true
-  save_score: true
 
   key_metric: srcc # if this metric improve, update all metrics. If not specified, each best metric results will be updated separately
   metrics:
