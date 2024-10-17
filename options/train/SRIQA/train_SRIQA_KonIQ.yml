@@ -32,6 +32,9 @@ datasets:
     batch_size_per_gpu: 8
     dataset_enlarge_ratio: 1
     prefetch_mode: ~
+    mos_range: [0, 100]
+    lower_better: false 
+    mos_normalize: true
 
   val:
     name: koniq10k

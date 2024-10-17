@@ -1,54 +1,39 @@
-# renyu: 使用LIVEC数据集上预提取特征换回归头训练的配置，跑train.py，network里设置回归头
-#        回归头训练配置相比原配置几处改动：
-#            1. 名称
-#            2. model_type使用GeneralIQAModel
-#            3. 数据增强：不做任何数据增强
-#            4. DataLoader：数据集类型改为GeneralNRFeatureDataset，dataroot_target改为featureroot_target
-#            5. 模型：SRIQA改为回归头如AVGMLPHead，关闭随机重复crop
+# renyu: 回归头在KonIQ数据集预提取特征上跑好的模型直接跑test.py脚本验证配置
+#        跑验证得到预测标签配置相比原配置几处改动：
+#            1. 移除训练集
+#            2. 预训练模型为最佳训练好的模型，修改pretrained_model_path
+#            3. save_score: true
 
 # general settings
-name: 001_Head_SRIQA_LIVEC
+name: 001_Head_SRIQA_KONIQ
 model_type: GeneralIQAModel
 num_gpu: 1  # set num_gpu: 0 for cpu mode
 manual_seed: 123
 split_num: 10
-save_final_results_path: './experiments/SRIQA_LIVEChallenge_10splits_results.txt'
+save_final_results_path: './experiments/SRIQA_KonIQ_10splits_results.txt'
 
 # dataset and data loader settings
 datasets:
-  train:
-    name: livechallenge
-    type: GeneralNRFeatureDataset
-    featureroot_target: ./datasets/LIVEC_FEATURE
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
-    split_index: 2 # which split to use, start from 1
-
-    # data loader
-    use_shuffle: true
-    num_worker_per_gpu: 4
-    batch_size_per_gpu: 8
-    dataset_enlarge_ratio: 1
-    prefetch_mode: ~
-
   val:
-    name: livechallenge
+    name: koniq10k
     type: GeneralNRFeatureDataset
-    featureroot_target: ./datasets/LIVEC_FEATURE
-    meta_info_file: ./datasets/meta_info/meta_info_LIVEChallengeDataset.csv
-    split_file: ./datasets/meta_info/livechallenge_seed123.pkl
-    split_index: 2 # which split to use, start from 1
+    featureroot_target: /data1/renyuyang/IQA/datasets/KonIQ_FEATURE
+    meta_info_file: ./datasets/meta_info/meta_info_KonIQ10kDataset.csv
+    split_file: ./datasets/meta_info/koniq10k_official.pkl
+    mos_range: [0, 100]
+    lower_better: false 
+    mos_normalize: true
+
 
 # network structures
 network:
   type: AVGMLPHead
-  #pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
-  #load_feature_weight_only: True
-  #crop_num: 10
+  pretrained_model_path: /home/renyuyang/IQA-PyTorch/good_models/001_Head_SRIQA_KONIQ_0.7683/models/net_best.pth
   repeat_crop: false
   conv_layer_num: 2
   pool_size: 7
   pool2_size: 256
+
 
 # path
 path:
@@ -79,8 +64,8 @@ train:
     milestones: [1000]
     gamma: 1
 
-  total_iter: 12000
-  finetune_start_iter: 6000
+  total_iter: 40000
+  finetune_start_iter: 60000
   warmup_iter: -1  # no warm up
 
   # losses
@@ -94,6 +79,7 @@ val:
   val_freq: !!float 100
   save_img: false
   pbar: true
+  save_score: true
 
   key_metric: srcc # if this metric improve, update all metrics. If not specified, each best metric results will be updated separately
   metrics:

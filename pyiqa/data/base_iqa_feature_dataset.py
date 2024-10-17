@@ -72,6 +72,7 @@ class BaseIQAFeatureDataset(data.Dataset):
                 item[1] = normalize(float(item[1]))
             self.logger.info(f'mos_label is normalized from {mos_range}, lower_better[{mos_lower_better}] to [0, 1], lower_better[False(higher better)].')
 
+    # renyu: 注意仅支持了center_crop和random_crop
     def get_transforms(self, opt):
         transform_list = []
         augment_dict = opt.get('augment', None)
@@ -80,9 +81,10 @@ class BaseIQAFeatureDataset(data.Dataset):
                 transform_list += transform_mapping(k, v)
 
         self.img_range = opt.get('img_range', 1.0)
-        transform_list += [
-                PairedToTensor(),
-                ]
+        # renyu: 自己numpy转tensor，不在这里做了
+        #transform_list += [
+        #        PairedToTensor(),
+        #        ]
         self.trans = tf.Compose(transform_list)
 
     def __getitem__(self, index):

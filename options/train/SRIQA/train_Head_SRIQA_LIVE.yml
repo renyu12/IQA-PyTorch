@@ -1,37 +1,31 @@
-# renyu: 使用KADID数据集上预提取特征换回归头训练的配置，跑train.py，network里设置回归头
+# renyu: 使用LIVE数据集上预提取特征换回归头训练的配置，跑train.py，network里设置回归头
 #        回归头训练配置相比原配置几处改动：
 #            1. 名称
 #            2. model_type使用GeneralIQAModel
 #            3. 数据增强：不做任何数据增强
 #            4. DataLoader：数据集类型改为GeneralFR2NRFeatureDataset，dataroot_target改为featureroot_target
-#            5. 模型：SRIQA改为回归头如AVGMLPHead，关闭预加载，关闭随机重复crop
+#            5. 模型：SRIQA改为回归头如AVGMLPHead，关闭随机重复crop
 
 # general settings
-name: 001_Head_SRIQA_KADID
+name: 001_Head_SRIQA_LIVE
 model_type: GeneralIQAModel
 num_gpu: 1  # set num_gpu: 0 for cpu mode
 manual_seed: 123
 split_num: 10
-save_final_results_path: './experiments/SRIQA_Kadid_10splits_results.txt'
+save_final_results_path: './experiments/SRIQA_LIVE_results.txt'
 
 # dataset and data loader settings
 datasets:
   train:
-    name: KADID10k
+    name: LIVE
     type: GeneralFR2NRFeatureDataset
-    featureroot_target: '/data1/renyuyang/IQA/datasets/KADID_FEATURE'
-    meta_info_file: './datasets/meta_info/meta_info_KADID10kDataset.csv'
-    mos_range: [1, 5]
-    lower_better: false
-    split_file: ./datasets/meta_info/kadid10k_seed123.pkl
+    featureroot_target: '/data1/renyuyang/IQA/datasets/LIVE_FEATURE'
+    meta_info_file: './datasets/meta_info/meta_info_LIVEIQADataset.csv'
+    mos_range: [1, 100]
+    lower_better: true
+    mos_normalize: true
+    split_file: ./datasets/meta_info/live_seed123.pkl
     split_index: 2 # which split to use, start from 1
-
-    # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
-    augment:
-      #hflip: true
-      #resize: [320, 320]
-      #random_crop: 384
-    img_range: 1
 
     # data loader
     use_shuffle: true
@@ -40,29 +34,34 @@ datasets:
     dataset_enlarge_ratio: 1
     prefetch_mode: ~
 
-  val:
-    name: KADID10k
-    type: GeneralFR2NRFeatureDataset
-    featureroot_target: '/data1/renyuyang/IQA/datasets/KADID_FEATURE'
-    meta_info_file: './datasets/meta_info/meta_info_KADID10kDataset.csv'
-    mos_range: [1, 5]
-    lower_better: false
-    split_file: ./datasets/meta_info/kadid10k_seed123.pkl
-    split_index: 2 # which split to use, start from 1
-
+    # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
     augment:
+      #hflip: true
       #resize: [320, 320]
-      #center_crop: 384
+      random_crop: 384
+    img_range: 1
+
+  val:
+    name: LIVE
+    type: GeneralFR2NRFeatureDataset
+    featureroot_target: '/data1/renyuyang/IQA/datasets/LIVE_FEATURE'
+    meta_info_file: './datasets/meta_info/meta_info_LIVEIQADataset.csv'
+    mos_range: [1, 100]
+    lower_better: true
+    mos_normalize: true
+    split_file: ./datasets/meta_info/live_seed123.pkl
+    split_index: 2 # which split to use, start from 1
 
 # network structures
 network:
-  type: AVGMLPHead
+  type: LRHead
   #pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
   #load_feature_weight_only: True
-  repeat_crop: False
-  conv_layer_num: 2
-  pool_size: 7
-  pool2_size: 256
+  #crop_num: 10
+  repeat_crop: false
+  #conv_layer_num: 2
+  #pool_size: 2
+  #pool2_size: 128
 
 # path
 path:
@@ -73,9 +72,8 @@ path:
 # training settings
 train:
   optim:
-    # renyu: just adam, don't two stage is OK
     type: Adam
-    lr: !!float 5e-4
+    lr: !!float 1e-4
     weight_decay: !!float 5e-4
 
   optim_finetune:
@@ -94,7 +92,7 @@ train:
     gamma: 1
 
   total_iter: 12000
-  finetune_start_iter: 6000
+  finetune_start_iter: 60000
   warmup_iter: -1  # no warm up
 
   # losses

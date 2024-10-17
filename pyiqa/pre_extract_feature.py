@@ -2,6 +2,7 @@ import logging
 import torch
 import numpy as np
 from os import path as osp
+import os
 
 from pyiqa.data import build_dataloader, build_dataset
 from pyiqa.models import build_model
@@ -71,17 +72,31 @@ class GeneralIQAFeatureModel(BaseModel):
             pbar = tqdm(total=len(dataloader), unit='image')
 
         for idx, val_data in enumerate(dataloader):
-            img_name = osp.basename(val_data['img_path'][0])
             self.feed_data(val_data)
             self.extract()
 
-            # renyu: 存储预提取的特征，命名规则是"原图名称_feature.npy"
-            img_name_no_ext = osp.splitext(img_name)[0] 
-            np.save(self.save_feature_path + '/' + img_name_no_ext + '_feature', self.output_feature.to('cpu').numpy())
+            # renyu: 存储预提取的特征，命名规则是仅修改后缀，"原图相对路径/原图名称_feature.npy"
+            img_path = val_data['img_path'][0]
+            img_dir, img_name_with_ext = osp.split(img_path)
+            img_name_no_ext = osp.splitext(img_name_with_ext)[0] 
+
+            # renyu: LIVE数据集有一层相对目录，不太好处理，硬编码一下
+            if dataset_name == 'LIVE':
+                if osp.sep in img_dir:  
+                    parent_dirname, last_segment = osp.split(img_dir)  
+                    img_name_no_ext = osp.join(last_segment, img_name_no_ext)
+           
+            feature_file_path = self.save_feature_path + '/' + img_name_no_ext + '_feature'
+            feature_dir, _ = osp.split(feature_file_path)  
+
+            if not osp.exists(feature_dir):  
+                os.makedirs(feature_dir)  
+
+            np.save(feature_file_path, self.output_feature.to('cpu').numpy())
             
             if use_pbar:
                 pbar.update(1)
-                pbar.set_description(f'Extract {img_name:>20}')
+                pbar.set_description(f'Extract {img_name_with_ext:>20}')
         if use_pbar:
             pbar.close()
 

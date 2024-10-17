@@ -49,6 +49,7 @@ class GeneralNRFeatureDataset(BaseIQAFeatureDataset):
         feature_tensor = np.load(feature_path)
         feature_tensor = np.squeeze(feature_tensor)    # renyu: (1,x,x,x)的格式移除下
         feature_tensor = torch.from_numpy(feature_tensor)
+        feature_tensor = self.trans(feature_tensor) * self.img_range    # renyu: 还是支持augment操作，测试对预提取特征能否crop
         mos_label_tensor = torch.Tensor([mos_label])
                 
         return {'img': feature_tensor, 'mos_label': mos_label_tensor, 'img_path': feature_path}
@@ -90,6 +91,7 @@ class GeneralFR2NRFeatureDataset(BaseIQAFeatureDataset):
         feature_tensor = np.load(feature_path)
         feature_tensor = np.squeeze(feature_tensor)    # renyu: (1,x,x,x)的格式移除下
         feature_tensor = torch.from_numpy(feature_tensor)
+        feature_tensor = self.trans(feature_tensor) * self.img_range    # renyu: 还是支持augment操作，测试对预提取特征能否crop
         mos_label_tensor = torch.Tensor([mos_label])
                 
         return {'img': feature_tensor, 'mos_label': mos_label_tensor, 'img_path': feature_path}

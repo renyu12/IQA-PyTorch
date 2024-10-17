@@ -91,6 +91,9 @@ class PairedCenterCrop(tf.CenterCrop):
             return imgs
         elif isinstance(imgs, Image.Image):
             return super().forward(imgs)
+        # renyu: 预提取特征处理，Tensor也支持下
+        elif isinstance(imgs, torch.Tensor):
+            return super().forward(imgs)
 
 
 class PairedRandomCrop(tf.RandomCrop):
@@ -119,6 +122,9 @@ class PairedRandomCrop(tf.RandomCrop):
                 imgs[i] = img
             return imgs
         elif isinstance(imgs, Image.Image):
+            return super().forward(imgs)
+        # renyu: 预提取特征处理，Tensor也支持下
+        elif isinstance(imgs, torch.Tensor):
             return super().forward(imgs)
 
 

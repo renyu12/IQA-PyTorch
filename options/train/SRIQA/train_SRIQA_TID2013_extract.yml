@@ -1,29 +1,39 @@
-# renyu: SRIQA加载BSRGAN预训练模型在KonIQ数据集上训练的配置，跑train.py
-#        涉及到500x384图像裁剪的问题，为了可重复性建议统一中心裁剪384x384，所以注释掉代码中的裁剪，用预处理的center_crop
-#        用的官方的数据集划分，是训练集7058，验证集1000，测试集2015
+# renyu: LIVE数据集BSRGAN预训练模型预提取特征存储为本地文件配置，跑pre_extract_feature.py
+#        预提取特征配置相比原配置几处改动：
+#            1. 名称
+#            2. model_type使用GeneralIQAFeatureModel
+#            3. 数据增强：不做hflip和crop（resize看情况）
+#            4. DataLoader：不需要shuffle、prefetch、enlarge啥的，batch size固定为1
+#            5. SRIQA模型：关闭随机重复crop
+#            6. 验证配置：添加预提取特征存储路径save_feature_path
+
 # general settings
-name: 001_EXTRACT_SRIQA_KONIQ
+name: 001_EXTRACT_SRIQA_TID2013
 model_type: GeneralIQAFeatureModel
 num_gpu: 1  # set num_gpu: 0 for cpu mode
 manual_seed: 123
 split_num: 10
-save_final_results_path: './experiments/SRIQA_LIVEChallenge_10splits_results.txt'
+save_final_results_path: './experiments/SRIQA_TID2013_results.txt'
 
 # dataset and data loader settings
 datasets:
   train:
-    name: koniq10k
-    type: GeneralNRDataset
-    dataroot_target: ./datasets/koniq10k/512x384
-    meta_info_file: ./datasets/meta_info/meta_info_KonIQ10kDataset.csv
-    split_file: ./datasets/meta_info/koniq10k_official.pkl
-    mos_range: [0, 100]
+    name: TID2013
+    type: GeneralFR2NRDataset
+    dataroot_target: ./datasets/tid2013/distorted_images
+    dataroot_ref: ./datasets/tid2013/reference_images
+    meta_info_file: ./datasets/meta_info/meta_info_TID2013Dataset.csv
+    mos_range: [0, 9]
     lower_better: false 
     mos_normalize: true
+    split_file: ./datasets/meta_info/tid2013_seed123.pkl
+    split_index: 2 # which split to use, start from 1
 
+    # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
     augment:
-      hflip: true
-      #resize: [400, 300]
+      #hflip: true
+      #resize: [360, 270]
+      #random_crop: 224
       center_crop: 384
     img_range: 1
 
@@ -35,28 +45,21 @@ datasets:
     #prefetch_mode: ~
 
   val:
-    name: koniq10k
-    type: GeneralNRDataset
-    dataroot_target: ./datasets/koniq10k/512x384
-    meta_info_file: ./datasets/meta_info/meta_info_KonIQ10kDataset.csv
-    split_file: ./datasets/meta_info/koniq10k_official.pkl
-    mos_range: [0, 100]
+    name: TID2013
+    type: GeneralFR2NRDataset
+    dataroot_target: ./datasets/tid2013/distorted_images
+    dataroot_ref: ./datasets/tid2013/reference_images
+    meta_info_file: ./datasets/meta_info/meta_info_TID2013Dataset.csv
+    mos_range: [0, 9]
     lower_better: false 
     mos_normalize: true
+    split_file: ./datasets/meta_info/tid2013_seed123.pkl
+    split_index: 2 # which split to use, start from 1
+
 
     augment:
-      #resize: [400, 300]
-      center_crop: 384
-
-  test:
-    name: koniq10k
-    type: GeneralNRDataset
-    dataroot_target: ./datasets/koniq10k/512x384
-    meta_info_file: ./datasets/meta_info/meta_info_KonIQ10kDataset.csv
-    split_file: ./datasets/meta_info/koniq10k_official.pkl
-
-    augment:
-      #resize: [400, 300]
+      #resize: [360, 270]
+      #center_crop: 224
       center_crop: 384
 
 # network structures
@@ -64,7 +67,7 @@ network:
   type: SRIQA
   pretrained_model_path: ./experiments/BSRGAN/BSRGAN.pth
   load_feature_weight_only: True
-  crop_num: 1
+  repeat_crop: False
 
 # path
 path:
@@ -75,7 +78,6 @@ path:
 # training settings
 train:
   optim:
-    # renyu: just adam, don't two stage is OK
     type: Adam
     lr: !!float 1e-3
     weight_decay: !!float 5e-4
@@ -95,7 +97,7 @@ train:
     milestones: [1000]
     gamma: 1
 
-  total_iter: 40000
+  total_iter: 15000
   finetune_start_iter: 60000
   warmup_iter: -1  # no warm up
 
@@ -107,10 +109,10 @@ train:
 
 # validation settings
 val:
-  val_freq: !!float 400
+  val_freq: !!float 100
   save_img: false
   pbar: true
-  save_feature_path: /data1/renyuyang/IQA/datasets/KonIQ_FEATURE
+  save_feature_path: /data1/renyuyang/IQA/datasets/TID2013_FEATURE
 
   key_metric: srcc # if this metric improve, update all metrics. If not specified, each best metric results will be updated separately
   metrics:
