@@ -21,14 +21,14 @@ datasets:
     # renyu: 控制下图像大小，缩放到320x320然后随机crop 224x224
     augment:
       hflip: true
-      resize: [256, 256]
-      random_crop: 224
+      resize: [320, 320]
+      #random_crop: 224
     img_range: 1
 
     # data loader
     use_shuffle: true
     num_worker_per_gpu: 4
-    batch_size_per_gpu: 16
+    batch_size_per_gpu: 8
     dataset_enlarge_ratio: 1
     prefetch_mode: ~
 
@@ -46,8 +46,8 @@ datasets:
 
 
     augment:
-      resize: [256, 256]
-      center_crop: 224
+      resize: [320, 320]
+      #center_crop: 224
 
     num_worker_per_gpu: 4
     batch_size_per_gpu: 8
@@ -55,7 +55,7 @@ datasets:
 # network structures
 network:
   type: ResNetIQA
-  freeze_resnet: true
+  freeze_resnet: false
 
 # path
 path:
@@ -67,7 +67,7 @@ path:
 train:
   optim:
     type: AdamW
-    lr: !!float 1e-3
+    lr: !!float 5e-4
 
   scheduler:
     type: MultiStepLR
